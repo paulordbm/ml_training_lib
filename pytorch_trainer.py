@@ -18,7 +18,8 @@ class DeepNetTrainer(object):
 
     def __init__(self, model=None, criterion=None, optimizer=None, lr_scheduler=None, callbacks=None, use_gpu='auto'):
 
-        assert (model is not None) and (criterion is not None) and (optimizer is not None)
+        assert (model is not None) and (
+            criterion is not None) and (optimizer is not None)
         self.model = model
         self.criterion = criterion
         self.optimizer = optimizer
@@ -41,21 +42,27 @@ class DeepNetTrainer(object):
 
     def fit(self, n_epochs, Xin, Yin, valid_data=None, valid_split=None, batch_size=10, shuffle=True):
         if valid_data is not None:
-            train_loader = DataLoader(TensorDataset(Xin, Yin), batch_size=batch_size, shuffle=shuffle)
-            valid_loader = DataLoader(TensorDataset(*valid_data), batch_size=batch_size, shuffle=shuffle)
+            train_loader = DataLoader(TensorDataset(
+                Xin, Yin), batch_size=batch_size, shuffle=shuffle)
+            valid_loader = DataLoader(TensorDataset(
+                *valid_data), batch_size=batch_size, shuffle=shuffle)
         elif valid_split is not None:
             iv = int(valid_split * Xin.shape[0])
             Xval, Yval = Xin[:iv], Yin[:iv]
             Xtra, Ytra = Xin[iv:], Yin[iv:]
-            train_loader = DataLoader(TensorDataset(Xtra, Ytra), batch_size=batch_size, shuffle=shuffle)
-            valid_loader = DataLoader(TensorDataset(Xval, Yval), batch_size=batch_size, shuffle=shuffle)
+            train_loader = DataLoader(TensorDataset(
+                Xtra, Ytra), batch_size=batch_size, shuffle=shuffle)
+            valid_loader = DataLoader(TensorDataset(
+                Xval, Yval), batch_size=batch_size, shuffle=shuffle)
         else:
-            train_loader = DataLoader(TensorDataset(Xin, Yin), batch_size=batch_size, shuffle=shuffle)
+            train_loader = DataLoader(TensorDataset(
+                Xin, Yin), batch_size=batch_size, shuffle=shuffle)
             valid_loader = None
         self.fit_loader(n_epochs, train_loader, valid_data=valid_loader)
 
     def evaluate(self, Xin, Yin, metrics=None, batch_size=10):
-        dloader = DataLoader(TensorDataset(Xin, Yin), batch_size=batch_size, shuffle=False)
+        dloader = DataLoader(TensorDataset(Xin, Yin),
+                             batch_size=batch_size, shuffle=False)
         return self.evaluate_loader(dloader, metrics)
 
     def _do_optimize(self, X, Y):
@@ -110,14 +117,15 @@ class DeepNetTrainer(object):
 
                     Ypred, loss = self._do_optimize(X, Y)
 
-                    vloss = loss.data.cpu[0]
+                    vloss = loss.data.cpu()[0]
                     if hasattr(self.criterion, 'size_average') and self.criterion.size_average:
                         epo_loss += mb_size * vloss
                     else:
                         epo_loss += vloss
 
                     for cb in self.callbacks:
-                        cb.on_batch_end(curr_epoch, curr_batch, X, Y, Ypred, loss)
+                        cb.on_batch_end(curr_epoch, curr_batch,
+                                        X, Y, Ypred, loss)
 
                 # end of training minibatches
                 eloss = float(epo_loss / epo_samples)
@@ -141,9 +149,11 @@ class DeepNetTrainer(object):
                             cb.on_vbatch_begin(curr_epoch, curr_batch, mb_size)
 
                         if self.use_gpu:
-                            X, Y = Variable(X.cuda(), volatile=True), Variable(Y.cuda(), volatile=True)
+                            X, Y = Variable(X.cuda(), volatile=True), Variable(
+                                Y.cuda(), volatile=True)
                         else:
-                            X, Y = Variable(X, volatile=True), Variable(Y, volatile=True)
+                            X, Y = Variable(X, volatile=True), Variable(
+                                Y, volatile=True)
 
                         Ypred, loss = self._do_evaluate(X, Y)
 
@@ -154,7 +164,8 @@ class DeepNetTrainer(object):
                             epo_loss += vloss
 
                         for cb in self.callbacks:
-                            cb.on_vbatch_end(curr_epoch, curr_batch, X, Y, Ypred, loss)
+                            cb.on_vbatch_end(
+                                curr_epoch, curr_batch, X, Y, Ypred, loss)
 
                     # end minibatches
                     eloss = float(epo_loss / epo_samples)
@@ -193,7 +204,8 @@ class DeepNetTrainer(object):
                 epo_batches += 1
 
                 if self.use_gpu:
-                    X, Y = Variable(X.cuda(), volatile=True), Variable(Y.cuda())
+                    X, Y = Variable(
+                        X.cuda(), volatile=True), Variable(Y.cuda())
                 else:
                     X, Y = Variable(X, volatile=True), Variable(Y)
 
@@ -270,7 +282,8 @@ class DeepNetTrainer(object):
 
 
 def load_trainer_state(file_basename, model, metrics):
-    model.load_state_dict(torch.load(file_basename + '.model', map_location=lambda storage, loc: storage))
+    model.load_state_dict(torch.load(
+        file_basename + '.model', map_location=lambda storage, loc: storage))
     if os.path.isfile(file_basename + '.histo'):
         metrics.update(pickle.load(open(file_basename + '.histo', 'rb')))
 
@@ -286,11 +299,12 @@ def predict(model, Xin, use_gpu='auto'):
         use_gpu = torch.cuda.is_available()
     if use_gpu:
         model = model.cuda()
-        Xin = Variable(Xin.cuda(),volatile=True)
+        Xin = Variable(Xin.cuda(), volatile=True)
     else:
-        Xin = Variable(Xin,volatile=True)
+        Xin = Variable(Xin, volatile=True)
     y_pred = model(Xin)
     return y_pred.data
+
 
 def predict_loader(model, data_loader, use_gpu='auto'):
     model.train(False)  # Set model to evaluate mode
@@ -299,13 +313,14 @@ def predict_loader(model, data_loader, use_gpu='auto'):
     predictions = []
     for X, _ in data_loader:
         if use_gpu:
-            X = Variable(X.cuda(),volatile=True)
+            X = Variable(X.cuda(), volatile=True)
         else:
-            X = Variable(X,volatile=True)
+            X = Variable(X, volatile=True)
         Ypred = model(X)
         Ypred = Ypred.cpu().data
         predictions.append(Ypred)
     return torch.cat(predictions, 0)
+
 
 def predict_classes(model, Xin, use_gpu='auto'):
     if use_gpu == 'auto':
@@ -314,12 +329,14 @@ def predict_classes(model, Xin, use_gpu='auto'):
     _, pred = torch.max(y_pred, 1)
     return pred
 
+
 def predict_classes_loader(model, data_loader, use_gpu='auto'):
     if use_gpu == 'auto':
         use_gpu = torch.cuda.is_available()
     y_pred = predict_loader(model, data_loader, use_gpu)
     _, pred = torch.max(y_pred, dim=1)
     return pred
+
 
 def predict_probas(model, Xin, use_gpu='auto'):
     if use_gpu == 'auto':
@@ -328,11 +345,12 @@ def predict_probas(model, Xin, use_gpu='auto'):
     probas = F.softmax(Variable(y_pred), dim=1)   # converts to Variable
     return probas.data
 
+
 def predict_probas_loader(model, data_loader, use_gpu='auto'):
     if use_gpu == 'auto':
         use_gpu = torch.cuda.is_available()
     y_pred = predict_loader(model, data_loader, use_gpu)
-    probas = F.softmax(Variable(y_pred), dim=1) # converts to Variable
+    probas = F.softmax(Variable(y_pred), dim=1)  # converts to Variable
     return probas.data
 
 
@@ -390,9 +408,11 @@ class AccuracyMetric(Callback):
 
     def on_epoch_end(self, epoch_num, metrics):
         if self.n_train_samples > 0:
-            metrics['train'][self.name].append(1.0 * self.train_accum / self.n_train_samples)
+            metrics['train'][self.name].append(
+                1.0 * self.train_accum / self.n_train_samples)
         if self.n_valid_samples > 0:
-            metrics['valid'][self.name].append(1.0 * self.valid_accum / self.n_valid_samples)
+            metrics['valid'][self.name].append(
+                1.0 * self.valid_accum / self.n_valid_samples)
 
     def on_train_begin(self, n_epochs, metrics):
         metrics['train'][self.name] = []
@@ -410,7 +430,8 @@ class ModelCheckpoint(Callback):
 
     def on_train_begin(self, n_epochs, metrics):
         if (self.basename is not None) and (not self.reset) and (os.path.isfile(self.basename + '.model')):
-            load_trainer_state(self.basename, self.trainer.model, self.trainer.metrics)
+            load_trainer_state(
+                self.basename, self.trainer.model, self.trainer.metrics)
             if self.verbose > 0:
                 print('Model loaded from', self.basename + '.model')
 
@@ -452,51 +473,54 @@ class PrintCallback(Callback):
 
     def on_train_end(self, n_epochs, metrics):
         n_train = len(metrics['train']['losses'])
-        print('Stop training at epoch: {}/{}'.format(n_train, self.trainer.last_epoch + n_epochs))
+        print('Stop training at epoch: {}/{}'.format(n_train,
+                                                     self.trainer.last_epoch + n_epochs))
 
     def on_epoch_begin(self, epoch, metrics):
         self.t0 = time.time()
 
     def on_epoch_end(self, epoch, metrics):
-            is_best = ''
-            has_valid = len(metrics['valid']['losses']) > 0 and metrics['valid']['losses'][0] is not None
-            has_metrics = len(metrics['train'].keys()) > 1
-            etime = time.time() - self.t0
+        is_best = ''
+        has_valid = len(metrics['valid']['losses']
+                        ) > 0 and metrics['valid']['losses'][0] is not None
+        has_metrics = len(metrics['train'].keys()) > 1
+        etime = time.time() - self.t0
 
-            if has_valid:
-                if epoch == int(np.argmin(metrics['valid']['losses'])) + 1:
-                    is_best = 'best'
-                if has_metrics:
-                    # validation and metrics
-                    metric_name = [mn for mn in metrics['valid'].keys() if mn != 'losses'][0]
-                    # metric_name = list(self.trainer.compute_metric.keys())[0]
-                    print('{:3d}: {:5.1f}s   T: {:.5f} {:.5f}   V: {:.5f} {:.5f} {}'
-                          .format(epoch, etime,
-                                  metrics['train']['losses'][-1],
-                                  metrics['train'][metric_name][-1],
-                                  metrics['valid']['losses'][-1],
-                                  metrics['valid'][metric_name][-1], is_best))
-                else:
-                    # validation and no metrics
-                    print('{:3d}: {:5.1f}s   T: {:.5f}   V: {:.5f} {}'
-                          .format(epoch, etime,
-                                  metrics['train']['losses'][-1],
-                                  metrics['valid']['losses'][-1], is_best))
+        if has_valid:
+            if epoch == int(np.argmin(metrics['valid']['losses'])) + 1:
+                is_best = 'best'
+            if has_metrics:
+                # validation and metrics
+                metric_name = [
+                    mn for mn in metrics['valid'].keys() if mn != 'losses'][0]
+                # metric_name = list(self.trainer.compute_metric.keys())[0]
+                print('{:3d}: {:5.1f}s   T: {:.5f} {:.5f}   V: {:.5f} {:.5f} {}'
+                      .format(epoch, etime,
+                              metrics['train']['losses'][-1],
+                              metrics['train'][metric_name][-1],
+                              metrics['valid']['losses'][-1],
+                              metrics['valid'][metric_name][-1], is_best))
             else:
-                if epoch == int(np.argmin(metrics['train']['losses'])) + 1:
-                    is_best = 'best'
-                if has_metrics:
-                    # no validation and metrics
-                    metric_name = list(self.trainer.compute_metric.keys())[0]
-                    print('{:3d}: {:5.1f}s   T: {:.5f} {:.5f} {}'
-                          .format(epoch, etime,
-                                  metrics['train']['losses'][-1],
-                                  metrics['train'][metric_name][-1], is_best))
-                else:
-                    # no validation and no metrics
-                    print('{:3d}: {:5.1f}s   T: {:.5f} {}'
-                          .format(epoch, etime,
-                                  metrics['train']['losses'][-1], is_best))
+                # validation and no metrics
+                print('{:3d}: {:5.1f}s   T: {:.5f}   V: {:.5f} {}'
+                      .format(epoch, etime,
+                              metrics['train']['losses'][-1],
+                              metrics['valid']['losses'][-1], is_best))
+        else:
+            if epoch == int(np.argmin(metrics['train']['losses'])) + 1:
+                is_best = 'best'
+            if has_metrics:
+                # no validation and metrics
+                metric_name = list(self.trainer.compute_metric.keys())[0]
+                print('{:3d}: {:5.1f}s   T: {:.5f} {:.5f} {}'
+                      .format(epoch, etime,
+                              metrics['train']['losses'][-1],
+                              metrics['train'][metric_name][-1], is_best))
+            else:
+                # no validation and no metrics
+                print('{:3d}: {:5.1f}s   T: {:.5f} {}'
+                      .format(epoch, etime,
+                              metrics['train']['losses'][-1], is_best))
 
 
 class PlotCallback(Callback):
@@ -534,24 +558,29 @@ class PlotCallback(Callback):
             self.line_train.remove()
         if self.dot_train:
             self.dot_train.remove()
-        self.line_train, = self.ax.plot(x, htrain, color='#1f77b4', linewidth=2, label='training loss')
+        self.line_train, = self.ax.plot(
+            x, htrain, color='#1f77b4', linewidth=2, label='training loss')
         best_epoch = int(np.argmin(htrain)) + 1
         best_loss = htrain[best_epoch - 1]
-        self.dot_train = self.ax.scatter(best_epoch, best_loss, c='#1f77b4', marker='o')
+        self.dot_train = self.ax.scatter(
+            best_epoch, best_loss, c='#1f77b4', marker='o')
 
         if hvalid[0] is not None:
             if self.line_valid:
                 self.line_valid.remove()
             if self.dot_valid:
                 self.dot_valid.remove()
-            self.line_valid, = self.ax.plot(x, hvalid, color='#ff7f0e', linewidth=2, label='validation loss')
+            self.line_valid, = self.ax.plot(
+                x, hvalid, color='#ff7f0e', linewidth=2, label='validation loss')
             best_epoch = int(np.argmin(hvalid)) + 1
             best_loss = hvalid[best_epoch - 1]
-            self.dot_valid = self.ax.scatter(best_epoch, best_loss, c='#ff7f0e', marker='o')
+            self.dot_valid = self.ax.scatter(
+                best_epoch, best_loss, c='#ff7f0e', marker='o')
 
         self.ax.legend()
         # self.ax.vlines(best_epoch, *self.ax.get_ylim(), colors='#EBDDE2', linestyles='dashed')
-        self.ax.set_title('Best epoch: {}, Current epoch: {}'.format(best_epoch, epoch))
+        self.ax.set_title(
+            'Best epoch: {}, Current epoch: {}'.format(best_epoch, epoch))
 
         display.display(self.fig)
         time.sleep(0.1)
@@ -573,7 +602,8 @@ def plot_losses(htrain, hvalid):
     if hvalid[0] is not None:
         best_epoch = int(np.argmin(hvalid)) + 1
         best_loss = hvalid[best_epoch - 1]
-        ax.plot(x, hvalid, color='#ff7f0e', linewidth=2, label='validation loss')
+        ax.plot(x, hvalid, color='#ff7f0e',
+                linewidth=2, label='validation loss')
         ax.scatter(best_epoch, best_loss, c='#ff7f0e', marker='o')
 
     ax.legend()
